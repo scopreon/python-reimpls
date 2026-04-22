@@ -5,3 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = []
+
+[tool.mypy]
+strict = true
+
+[dependency-groups]
+lint = [
+    "mypy>=1.20.2",
+]
