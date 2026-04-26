@@ -1,11 +1,12 @@
 from __future__ import annotations
-from typing import Any, Generator, Never, Iterator, cast
+from typing import Any, Generator, Never, Iterator, cast, overload
 import json
 from enum import Enum, auto
 from dataclasses import dataclass
 
-type JsonPrimative = list[JsonPrimative] | JsonObject | int | str | float | bool | None
-type JsonObject = dict[str, JsonPrimative] | list[JsonPrimative]
+type JsonObject = (
+    list[JsonObject] | dict[str, JsonObject] | int | str | float | bool | None
+)
 
 
 def error() -> Never:
@@ -141,7 +142,7 @@ class JsonTokeniser:
             count = 0
             while (c := self._char()).isdigit():
                 count += 1
-                fraction += int(c) / (10**count)
+                fraction += int(c) / pow(10, count)
                 self._increment()
             number += fraction
 
@@ -163,9 +164,9 @@ class JsonTokeniser:
                 self._increment()
 
             if positive:
-                number *= 10**mult
+                number *= pow(10, mult)
             else:
-                number *= 10**-mult
+                number *= pow(10, -mult)
 
         if is_negative:
             return -1 * number
@@ -211,38 +212,14 @@ class JsonTokeniser:
         return tokens
 
 
-test_str = r"""
-{
-  "quote": "He said, \"Hello, world!\"",
-  "backslash": "This is a backslash: \\",
-  "slash": "Forward slash: /",
-  "newline": "Line1\nLine2",
-  "tab": "Column1\tColumn2",
-  "carriage_return": "First line\rSecond line",
-  "backspace": "ABC\bDEF",
-  "formfeed": "Page1\fPage2",
-  "unicode": "Snowman: \u2603, Emoji: \uD83D\uDE03",
-  "mixed": "Quotes: \" \\ \/ \b \f \n \r \t and unicode \u2764",
-  "nested": {
-    "array": ["One\nTwo", "Tab\tHere", "Quote: \"", "Slash\\/Backslash\\\\"]
-  }
-}
-"""
-# s = JsonTokeniser()
-# print("\n".join(map(str, s.tokenise('{"i":0}'))))
-# print("\n".join(map(str, s.tokenise(test_str))))
-
-# exit(0)
-
-
 class JsonParser:
     _tokens: Iterator[JsonToken]
 
     def _token(self) -> JsonToken:
         return next(self._tokens)
 
-    def _process_dict(self) -> dict[str, JsonPrimative]:
-        ret: dict[str, JsonPrimative] = {}
+    def _process_dict(self) -> dict[str, JsonObject]:
+        ret: dict[str, JsonObject] = {}
         anticipate = False
         token = self._token()
         while not (
@@ -267,7 +244,7 @@ class JsonParser:
                 anticipate = False
         return ret
 
-    def _process_list(self) -> list[JsonPrimative]:
+    def _process_list(self) -> list[JsonObject]:
         ret = []
         anticipate = False
         token = self._token()
@@ -286,7 +263,7 @@ class JsonParser:
                 anticipate = False
         return ret
 
-    def _parse_json_object(self, token: JsonToken) -> JsonPrimative:
+    def _parse_json_object(self, token: JsonToken) -> JsonObject:
         if token.type == JsonTokenType.e_SYMBOL and token.value == "[":
             return self._process_list()
         elif token.type == JsonTokenType.e_SYMBOL and token.value == "{":
@@ -296,11 +273,11 @@ class JsonParser:
         else:
             return token.value
 
-    def parse(self, string: str) -> JsonPrimative:
+    def parse(self, string: str) -> JsonObject:
         try:
             tokeniser = JsonTokeniser()
             self._tokens = iter(tokeniser.tokenise(string))
-            ret: JsonPrimative
+            ret: JsonObject
             token = self._token()
             ret = self._parse_json_object(token)
             try:
@@ -411,7 +388,7 @@ deep_obj = (r'{"a":' * 100) + r"0" + (r"}" * 100)
 check(deep_obj)
 
 # 💣 FINAL COMPLEX VALID JSON
-ultimate = r"""
+ultimate1 = r"""
 {
   "a": [1, -2.3e+4, true, false, null, {"nested": ["\u0041", "\n", "\\"]}],
   "b": {"deep": {"x": {"y": {"z": [0,1,2,3,{"k":"v"}]}}}},
@@ -419,6 +396,25 @@ ultimate = r"""
   "d": []
 }
 """
-check(ultimate)
+check(ultimate1)
+
+ultimate2 = r"""
+{
+  "quote": "He said, \"Hello, world!\"",
+  "backslash": "This is a backslash: \\",
+  "slash": "Forward slash: /",
+  "newline": "Line1\nLine2",
+  "tab": "Column1\tColumn2",
+  "carriage_return": "First line\rSecond line",
+  "backspace": "ABC\bDEF",
+  "formfeed": "Page1\fPage2",
+  "unicode": "Snowman: \u2603, Emoji: \uD83D\uDE03",
+  "mixed": "Quotes: \" \\ \/ \b \f \n \r \t and unicode \u2764",
+  "nested": {
+    "array": ["One\nTwo", "Tab\tHere", "Quote: \"", "Slash\\/Backslash\\\\"]
+  }
+}
+"""
+check(ultimate2)
 
 print("All tests passed!")
