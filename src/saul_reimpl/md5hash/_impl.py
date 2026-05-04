@@ -1,5 +1,5 @@
 from typing import Generator
-
+import time
 # fmt: off
 
 K = [
@@ -29,6 +29,15 @@ S = [
 ]
 
 # fmt: on
+def leftrotate(data: int, ammount_bits: int) -> int:
+    rotation = ammount_bits % 32
+    return (data << rotation | data >> (32 - rotation)) & 0xFFFFFFFF
+
+
+def chunks(data: memoryview[bytes]) -> Generator[memoryview[bytes], None, None]:
+    WIDTH = 64
+    for i in range(0, len(data), WIDTH):
+        yield data[i : i + WIDTH]
 
 
 def _md5_hash_impl(DATA: str) -> bytes:
@@ -49,16 +58,9 @@ def _md5_hash_impl(DATA: str) -> bytes:
     elif MOD > 448 // 8:
         data_bytes += (448 // 8 + 512 // 8 - MOD) * b"\x00"
 
-    data_bytes += (original_length_bits % 2**64).to_bytes(8, byteorder="little")
-
-    def leftrotate(data: int, ammount_bits: int) -> int:
-        rotation = ammount_bits % 32
-        return (data << rotation | data >> (32 - rotation)) & 0xFFFFFFFF
-
-    def chunks(data: memoryview[bytes]) -> Generator[memoryview[bytes], None, None]:
-        WIDTH = 64
-        for i in range(0, len(data), WIDTH):
-            yield data[i : i + WIDTH]
+    data_bytes += (original_length_bits & 0xFFFFFFFFFFFFFFFF).to_bytes(
+        8, byteorder="little"
+    )
 
     for chunk in chunks(memoryview(data_bytes)):
         M = [chunk[i : i + 4] for i in range(0, 512 // 8, 4)]
@@ -109,5 +111,16 @@ def md5(string: str) -> bytes:
     return _md5_hash_impl(string)
 
 
-MY_STRING = "12345" * 1000000
-print(md5(MY_STRING).hex())
+data: list[tuple[int, float]] = []
+
+
+for i in range(8):
+    LENGTH = 10**i
+    MY_STRING = "a" * LENGTH
+    initial = time.monotonic()
+    md5(MY_STRING).hex()
+    after = time.monotonic()
+    data.append((LENGTH, after - initial))
+
+with open("file", "a") as f:
+    f.write(str(data))

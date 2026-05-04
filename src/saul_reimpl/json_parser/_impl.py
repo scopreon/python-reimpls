@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Generator, Never, Iterator, cast, overload
+from typing import Never, Iterator, cast
 import json
 from enum import Enum, auto
 from dataclasses import dataclass
