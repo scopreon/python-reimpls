@@ -55,12 +55,12 @@ def _md5_hash_impl(DATA: str) -> bytes:
         rotation = ammount_bits % 32
         return (data << rotation | data >> (32 - rotation)) & 0xFFFFFFFF
 
-    def chunks(data: bytes) -> Generator[memoryview, None, None]:
+    def chunks(data: memoryview[bytes]) -> Generator[memoryview[bytes], None, None]:
         WIDTH = 64
         for i in range(0, len(data), WIDTH):
-            yield memoryview(data)[i : i + WIDTH]
+            yield data[i : i + WIDTH]
 
-    for chunk in chunks(data_bytes):
+    for chunk in chunks(memoryview(data_bytes)):
         M = [chunk[i : i + 4] for i in range(0, 512 // 8, 4)]
         A = A0
         B = B0
@@ -109,4 +109,5 @@ def md5(string: str) -> bytes:
     return _md5_hash_impl(string)
 
 
-print(md5("hello").hex())
+MY_STRING = "12345" * 1000000
+print(md5(MY_STRING).hex())
